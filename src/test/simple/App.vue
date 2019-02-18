@@ -13,12 +13,12 @@
 .bg2 { background-color: #afa; }
 .bg3 { background-color: #aaf; }
 
-.drag-container {
+.pan-container {
   background: #ccc;
   position: relative;
   height: 100px;
 }
-.drag-item {
+.pan-item {
   border: solid 1px;
   width: 50px;
   height: 50px;
@@ -30,9 +30,20 @@
   top: 0;
   left: 0;
 }
-.drag-item.dd-touch {
+.pan-item.dd-touch {
   background: #faa;
   z-index: 2;
+}
+
+#alerts {
+  position: fixed;
+  z-index: 100;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, .8);
+  color: #fff;
 }
 </style>
 <template>
@@ -40,19 +51,24 @@
   <h1>Simple Test</h1>
   <section>
     <h2>Tap</h2>
-    <p><a href="javascript:void(0);" @dd-tap="tap1">anchor</a></p>
-    <p><a href="https://www.google.co.jp" @dd-tap="tap1" target="_blank">https://www.google.co.jp</a></p>
-    <p><a href="https://www.google.co.jp" @dd-tap.prevent="tap1" target="_blank">https://www.google.co.jp (preventDefault)</a></p>
-    <p><button @dd-tap="tap1">button</button></p>
+    <p><a href="javascript:void(0);" @tap="tap1">anchor</a></p>
+    <p><a href="https://www.google.co.jp" @tap="tap1" target="_blank">https://www.google.co.jp</a></p>
+    <p><a href="https://www.google.co.jp" @tap="tap1" @tapstart.prevent @click.prevent target="_blank">https://www.google.co.jp (click.event.preventDefault)</a></p>
+    <p><button @tap="tap1">button</button></p>
+    <p><a href="javascript:void(0);" @tap="addCount" @tapstart.prevent>count[{{count}}]</a></p>
+    <p><button @tap="addCount" @tapstart.prevent>count[{{count}}]</button></p>
+    <div @tap="addCount" @tapstart.prevent style="cursor: pointer; width: 100px; height: 50px; text-align: center; vertical-align: 50px; background: #efefef">
+      count[{{count}}]
+    </div>
   </section>
 
   <section>
     <h2>Nested</h2>
-    <div class="box bg1" @dd-tap="tapParent">
+    <div class="box bg1" @tap="tapParent">
       <p>Parent</p>
-      <div class="box bg2" @dd-tap="tapChild1">
+      <div class="box bg2" @tap="tapChild1">
         <p>Child1</p>
-        <div class="box bg3" @dd-tap="tapChild2">
+        <div class="box bg3" @tap="tapChild2">
           <p>Child2</p>
         </div>
       </div>
@@ -61,11 +77,11 @@
 
   <section>
     <h2>Nested (stopPropagation)</h2>
-    <div class="box bg1" @dd-tap.stop="tapParent">
+    <div class="box bg1" @tap.stop="tapParent">
       <p>Parent</p>
-      <div class="box bg2" @dd-tap.stop="tapChild1">
+      <div class="box bg2" @tap.stop="tapChild1">
         <p>Child1</p>
-        <div class="box bg3" @dd-tap.stop="tapChild2">
+        <div class="box bg3" @tap.stop="tapChild2">
           <p>Child2</p>
         </div>
       </div>
@@ -73,38 +89,44 @@
   </section>
 
   <section>
-    <h2>Drag</h2>
-    <div class="drag-container">
+    <h2>Pan</h2>
+    <div class="pan-container">
       <div
-        class="drag-item"
+        class="pan-item"
         v-for="n in 3"
         :key="n"
-        @dd-dragstart.prevent="dragStart"
-        @dd-dragmove="dragMove"
-        @dd-dragend="dragEnd"
+        @panstart="panStart"
+        @panmove.prevent="panMove"
+        @panend="panEnd"
       >{{n}}</div>
     </div>
   </section>
 
   <section>
-    <h2>Drag (enclosure)</h2>
-    <div class="drag-container">
+    <h2>Pan (enclosure)</h2>
+    <div class="pan-container">
       <div
-        class="drag-item"
+        class="pan-item"
         v-for="n in 3"
         :key="n"
-        @dd-dragstart.prevent="dragStart"
-        @dd-dragmove="dragMoveEnclosure"
-        @dd-dragend="dragEnd"
+        @panstart="panStart"
+        @panmove.prevent="panMoveEnclosure"
+        @panend="panEnd"
       >{{n}}</div>
     </div>
   </section>
+
+  <div id="alerts" v-if="alerts.length" @tap="alerts = []">
+    <p v-for="alert, index in alerts" :key="index">{{alert}}</p>
+  </div>
 </div>
 </template>
 <script>
 export default {
   data() {
     return {
+      count: 0,
+      alerts: [],
     }
   },
 
@@ -116,37 +138,43 @@ export default {
 
 
   methods: {
+    alert() {
+      this.alerts.push(...arguments);
+    },
+    addCount() {
+      this.count++;
+    },
     tap1(e) {
       console.log(e);
-      alert('tap!!!');
+      this.alert('tap!!!');
     },
     tapParent(e) {
       console.log(e);
-      alert('tapParent');
+      this.alert('tapParent');
     },
     tapChild1(e) {
       console.log(e);
-      alert('tapChild1');
+      this.alert('tapChild1');
     },
     tapChild2(e) {
       console.log(e);
-      alert('tapChild2');
+      this.alert('tapChild2');
     },
-    dragStart(e) {
-      console.info('dragStart');
+    panStart(e) {
+      console.info('panStart');
       console.log(e);
-      return DDTappable.dragStart(e);
+      return DDTappable.panStart(e);
     },
-    dragMove(e) {
-      return DDTappable.dragMove(e);
+    panMove(e) {
+      return DDTappable.panMove(e);
     },
-    dragMoveEnclosure(e) {
-      return DDTappable.dragMove(e, {enclosure: true});
+    panMoveEnclosure(e) {
+      return DDTappable.panMove(e, {enclosure: true});
     },
-    dragEnd(e) {
-      console.info('dragEnd');
+    panEnd(e) {
+      console.info('panEnd');
       console.log(e);
-      return DDTappable.dragEnd(e);
+      return DDTappable.panEnd(e);
     },
   },
 
